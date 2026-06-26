@@ -29,8 +29,8 @@ export function Shell({ t, ar, lang, setLang, view, setView, selName, children }
             <Mascot size={26} />
             <span style={{ fontSize: 10.5, color: "var(--muted)", lineHeight: 1.35 }}>{t.mascotHint}</span>
           </div>
-          <button className="btn btn-ghost" style={{ width: "100%", justifyContent: "center", marginBottom: 10 }}
-            onClick={() => setLang(lang === "en" ? "ar" : "en")}><Globe size={15} />{lang === "en" ? "العربية" : "English"}</button>
+          {/* <button className="btn btn-ghost" style={{ width: "100%", justifyContent: "center", marginBottom: 10 }}
+            onClick={() => setLang(lang === "en" ? "ar" : "en")}><Globe size={15} />{lang === "en" ? "العربية" : "English"}</button> */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 8px", borderRadius: 11, background: "rgba(255,255,255,.03)" }}>
             <div style={{ width: 34, height: 34, borderRadius: 9, background: "var(--green-deep)", display: "grid", placeItems: "center", color: "var(--accent-bright)", fontWeight: 700 }}>{ar ? "ط" : "T"}</div>
             <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600 }}>{t.scoutName}</div>

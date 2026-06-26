@@ -36,7 +36,7 @@ export const T = {
     uploadClips: "Upload clips", uploadTitle: "Upload clips for {name}",
     uploadHint: "Each clip becomes a Pending review on this player's timeline. ~10 min max per clip.",
     chooseFiles: "Choose video files", orAddManually: "or add a clip manually",
-    clipAction: "Action", clipOpp: "Opponent", clipMin: "Min", addRow: "Add another clip",
+    clipAction: "Action", clipOpp: "Opponent (if any)", clipMin: "Min", addRow: "Add another clip",
     clipDate: "Match date", clipIdent: "How to spot him — e.g. blue jersey, white socks, #6, right side",
     clipN: "Clip {n}", identLabel: "Spot",
     addToTimeline: "Add {n} clip(s) to timeline", noClipsYet: "No clips yet",

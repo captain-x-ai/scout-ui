@@ -16,4 +16,4 @@ export const POSITIONS = ["GK", "LB", "CB", "RB", "CDM", "CM", "CAM", "LW", "RW"
 export const FLAGS = ["🇸🇦", "🇧🇷", "🇦🇷", "🇲🇦", "🇵🇹", "🇪🇸", "🇫🇷", "🇳🇬", "🇸🇳", "🌍"];
 
 // Tag options offered when uploading clips.
-export const ACTIONS = ["Progressive carry", "1v1 defending", "Recovery sprint", "Aerial duel", "Line-breaking pass", "Overlapping run", "Pressing trigger", "Set-piece delivery", "Switch of play", "Finishing"];
+export const ACTIONS = ["Progressive carry", "1v1 defending", "Recovery sprint", "Aerial duel", "Line-breaking pass", "Overlapping run", "Pressing trigger", "Set-piece delivery", "Switch of play", "Finishing", "Other"];

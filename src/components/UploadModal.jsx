@@ -56,7 +56,7 @@ export function UploadModal({ t, ar, player, onClose, onAdd }) {
             </div>
           ))}
         </div>
-        <button className="btn btn-ghost" onClick={add} style={{ marginBottom: 18 }}><Plus size={14} />{t.addRow}</button>
+        {/* <button className="btn btn-ghost" onClick={add} style={{ marginBottom: 18 }}><Plus size={14} />{t.addRow}</button> */}
 
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", borderTop: "1px solid var(--line2)", paddingTop: 16 }}>
           <button className="btn btn-ghost" onClick={onClose}>{t.cancel}</button>
