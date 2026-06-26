@@ -7,7 +7,7 @@ import { StatusPill } from "./ui/StatusPill";
 import { StageSelect } from "./ui/StageSelect";
 import { Header } from "./ui/Header";
 
-export function MyPlayers({ t, ar, players, need, updatePlayer, onAdd, onOpen }) {
+export function MyPlayers({ t, ar, players, need, loading, updatePlayer, onAdd, onOpen }) {
   const [q, setQ] = useState("");
   const [fpos, setFpos] = useState("all");
   const [fstage, setFstage] = useState("all");
@@ -15,7 +15,13 @@ export function MyPlayers({ t, ar, players, need, updatePlayer, onAdd, onOpen })
   const [mode, setMode] = useState("list");
   const positions = [...new Set(players.map((p) => p.pos))];
 
-  const enrich = (p) => ({ ...p, ev: computeEval(p.reviews, 5, false), fit: fitScore(p, need) });
+  const enrich = (p) => {
+    const ev = p.evalScore != null
+      ? { score: p.evalScore }
+      : computeEval(p.reviews || [], 5, false);
+    const fit = p.fitScore != null ? p.fitScore : fitScore(p, need);
+    return { ...p, ev, fit };
+  };
   let rows = players.map(enrich).filter((p) => {
     const name = (ar ? p.nameAr : p.name).toLowerCase();
     return (name.includes(q.toLowerCase()) || p.name.toLowerCase().includes(q.toLowerCase()))
@@ -31,6 +37,14 @@ export function MyPlayers({ t, ar, players, need, updatePlayer, onAdd, onOpen })
   rows = [...rows].sort(sorters[sort]);
 
   const revLabel = (d) => d === 0 ? t.todayRev : t.lastRev.replace("{d}", d);
+
+  if (loading && players.length === 0) {
+    return (
+      <div className="fade" style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>
+        Loading players…
+      </div>
+    );
+  }
 
   return (
     <div className="fade">

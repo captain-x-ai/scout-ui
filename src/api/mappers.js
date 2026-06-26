@@ -1,0 +1,195 @@
+const FLAG_BY_CODE = {
+  SA: "🇸🇦", BR: "🇧🇷", AR: "🇦🇷", MA: "🇲🇦", PT: "🇵🇹",
+  ES: "🇪🇸", FR: "🇫🇷", NG: "🇳🇬", SN: "🇸🇳",
+};
+
+const CODE_BY_FLAG = Object.fromEntries(
+  Object.entries(FLAG_BY_CODE).map(([code, flag]) => [flag, code]),
+);
+
+// Football action tag labels → API keys (matches sport_catalog default_config).
+const ACTION_KEY_BY_LABEL = {
+  "Progressive carry": "progressive_carry",
+  "1v1 defending": "1v1_defending",
+  "Recovery sprint": "recovery_sprint",
+  "Aerial duel": "aerial_duel",
+  "Line-breaking pass": "line_breaking_pass",
+  "Overlapping run": "overlapping_run",
+  "Pressing trigger": "pressing_trigger",
+  "Set-piece delivery": "set_piece_delivery",
+  "Switch of play": "switch_of_play",
+  "Finishing": "finishing",
+  "Other": "progressive_carry",
+};
+
+export function actionTagKey(label) {
+  return ACTION_KEY_BY_LABEL[label] || label.toLowerCase().replace(/\s+/g, "_");
+}
+
+export function flagFromCode(code) {
+  if (!code) return "🌍";
+  return FLAG_BY_CODE[code.toUpperCase()] || "🌍";
+}
+
+export function codeFromFlag(flag) {
+  return CODE_BY_FLAG[flag] || "";
+}
+
+function marketValueNum(mv) {
+  if (!mv) return 0;
+  if (typeof mv.amount === "number") return mv.amount;
+  return 0;
+}
+
+function marketValueDisplay(mv) {
+  if (!mv) return "€0m";
+  return mv.display || `€${marketValueNum(mv)}m`;
+}
+
+export function mapReviewFromClip(clip, order) {
+  const r = clip.review || {};
+  const createdAt = clip.created_at || "";
+  return {
+    id: clip.clip_id,
+    order: order ?? 0,
+    createdAt,
+    type: r.review_type || "pending",
+    score: r.score ?? null,
+    rec: r.recommendation ?? null,
+    conf: r.confidence ?? null,
+    minute: clip.minute ?? 0,
+    opp: clip.opponent_name || "—",
+    tag: clip.action_tag_label || clip.action_tag_key || "Clip",
+    date: clip.match_date || "",
+    ident: clip.ident_text || "",
+    ai: r.ai_observation || "",
+    human: r.human_observation ?? null,
+    editDelta: r.edit_delta ?? 0,
+    status: clip.status,
+    mediaReady: !!clip.media_ready,
+    reviewReady: !!clip.review_ready,
+    thumbnailUrl: clip.thumbnail_url,
+    videoUrl: clip.video_playback_url,
+  };
+}
+
+export function mapPlayerListItem(item) {
+  return {
+    id: item.id,
+    name: item.name,
+    nameAr: item.name_ar || item.name,
+    club: item.external_club_name || "—",
+    flag: flagFromCode(item.nationality_code),
+    pos: item.position_key,
+    age: item.age,
+    value: marketValueDisplay(item.market_value),
+    valueNum: marketValueNum(item.market_value),
+    stage: item.stage,
+    daysAgo: item.days_ago ?? 999,
+    evalScore: item.eval_score,
+    fitScore: item.fit_score,
+    photoUrl: item.photo_url,
+    attrs: item.attributes || {},
+    reviews: [],
+    summary: null,
+  };
+}
+
+export function mapPlayerDetail(data) {
+  const p = data.player || {};
+  const clips = data.clips || [];
+  const pag = data.clips_pagination || {};
+  const reviews = clips.map((c, i) => mapReviewFromClip(c, clips.length - i));
+
+  return {
+    id: p.id,
+    name: p.name,
+    nameAr: p.name_ar || p.name,
+    club: p.external_club_name || "—",
+    flag: flagFromCode(p.nationality_code),
+    pos: p.position_key,
+    age: p.age,
+    value: marketValueDisplay(p.market_value),
+    valueNum: marketValueNum(p.market_value),
+    stage: p.stage,
+    daysAgo: p.last_reviewed_at ? daysAgoFromIso(p.last_reviewed_at) : 999,
+    attrs: p.attributes || {},
+    reviews,
+    clipsPagination: {
+      page: pag.page || 1,
+      pageSize: pag.page_size || 10,
+      total: pag.total || clips.length,
+      totalPages: pag.total_pages || (clips.length ? 1 : 0),
+    },
+    summary: null,
+    evalScore: p.eval_score,
+    fitScore: data.fit_score,
+    overruleRate: data.overrule_rate,
+    evaluation: data.evaluation,
+    photoUrl: p.photo_url,
+  };
+}
+
+function daysAgoFromIso(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 999;
+  return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
+}
+
+export function mapScoutingNeed(need) {
+  if (!need) return null;
+  const attrs = (need.weighted_attributes || []).map((a) => ({
+    key: a.key,
+    weight: a.weight,
+  }));
+  return {
+    pos: need.position_key,
+    maxAge: need.max_age,
+    maxValue: need.max_value_amount,
+    title: need.title,
+    attrs,
+  };
+}
+
+export function mapCreatePlayerPayload(form) {
+  return {
+    name: form.name,
+    name_ar: form.nameAr || form.name,
+    external_club_name: form.club === "—" ? "" : form.club,
+    position_key: form.pos,
+    age: Number(form.age) || 18,
+    email: form.email,
+    market_value_amount: Number(form.valueNum) || 0,
+    market_value_currency: "EUR",
+    nationality_code: codeFromFlag(form.flag),
+    stage: form.stage || "watching",
+  };
+}
+
+export function mapDossier(data) {
+  const p = data.player || {};
+  const keyClips = (data.key_clips || []).map((c, i) => ({
+    id: c.clip_id || `k${i}`,
+    opp: c.opponent_name,
+    tag: c.action_tag_label,
+    minute: c.minute,
+    date: c.match_date,
+    score: c.score,
+    human: c.observation,
+    type: "human",
+  }));
+  return {
+    player: {
+      name: p.name,
+      nameAr: p.name_ar || p.name,
+      club: p.external_club_name || "—",
+      pos: p.position_key,
+      age: p.age,
+      value: marketValueDisplay(p.market_value),
+      attrs: p.attributes || {},
+    },
+    evaluation: data.evaluation,
+    keyClips,
+    generatedAt: data.generated_at,
+  };
+}
