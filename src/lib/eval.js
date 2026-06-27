@@ -32,6 +32,7 @@ export function overruleRate(reviews) {
   return Math.round((over / human.length) * 100);
 }
 export function fitScore(player, need) {
+  if (!need?.attrs?.length) return 0;
   let s = 0;
   need.attrs.forEach((a) => { s += (player.attrs[a.key] || 0) * a.weight; });
   s = s / need.attrs.reduce((t, a) => t + a.weight, 0); // 0-100 attribute fit

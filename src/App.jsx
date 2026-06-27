@@ -13,8 +13,14 @@ import { AddPlayer } from "./components/AddPlayer";
 import { Player } from "./components/Player";
 import { Report } from "./components/Report";
 
+function detectLang() {
+  const stored = localStorage.getItem("captainx_lang");
+  if (stored === "ar" || stored === "en") return stored;
+  return (navigator.language || "").toLowerCase().startsWith("ar") ? "ar" : "en";
+}
+
 export default function App() {
-  const [lang, setLang] = useState("en");
+  const [lang, setLang] = useState(detectLang);
   const [dossier, setDossier] = useState(null);
   const [dossierLoading, setDossierLoading] = useState(false);
 
@@ -78,7 +84,7 @@ export default function App() {
     <div className={`kx ${ar ? "lang-ar" : ""}`} dir={ar ? "rtl" : "ltr"}>
       <style>{CSS}</style>
       {view === "login" || !isAuthenticated
-        ? <Login t={t} lang={lang} setLang={setLang} />
+        ? <Login t={t} lang={lang} setLang={(l) => { localStorage.setItem("captainx_lang", l); setLang(l); }} />
         : !session
           ? (
             <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, textAlign: "center" }}>
