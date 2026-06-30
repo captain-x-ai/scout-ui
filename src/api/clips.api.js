@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import { ClipUploadError } from "./clipUploadErrors";
 import { actionTagKey } from "./mappers";
 
 function clubPath(session) {
@@ -36,25 +37,45 @@ export async function createClip(session, playerId, row) {
 }
 
 /**
- * PUT bytes to a GCS V4 signed URL.
+ * PUT bytes to a GCS V4 signed URL (XHR for upload progress).
  * Content-Type must exactly match the value used when the URL was signed.
  */
-export async function uploadToPresignedUrl(uploadUrl, file, signedHeaders = {}) {
+export function uploadToPresignedUrl(uploadUrl, file, signedHeaders = {}, onByteProgress) {
   const contentType = signedHeaders["Content-Type"]
     || signedHeaders["content-type"];
   if (!contentType) {
-    throw new Error("Missing Content-Type in signed upload headers");
+    return Promise.reject(new ClipUploadError("config", { message: "Missing Content-Type in signed upload headers" }));
   }
 
-  const res = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: { "Content-Type": contentType },
-    body: file,
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", uploadUrl);
+    xhr.setRequestHeader("Content-Type", contentType);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onByteProgress) {
+        onByteProgress(e.loaded, e.total);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+        return;
+      }
+      reject(new ClipUploadError("http", { status: xhr.status }));
+    };
+
+    xhr.onerror = () => {
+      reject(new ClipUploadError("network"));
+    };
+
+    xhr.onabort = () => {
+      reject(new ClipUploadError("aborted"));
+    };
+
+    xhr.send(file);
   });
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    throw new Error(`Upload failed (${res.status})${detail ? `: ${detail.slice(0, 200)}` : ""}`);
-  }
 }
 
 export async function markUploadComplete(session, clipId) {
@@ -62,6 +83,11 @@ export async function markUploadComplete(session, clipId) {
     method: "POST",
     body: "{}",
   });
+}
+
+/** Remove a clip that never finished browser upload (pending_upload only). */
+export async function deletePendingClip(session, clipId) {
+  return apiFetch(`${clubPath(session)}/clips/${clipId}`, { method: "DELETE" });
 }
 
 export async function getClipStatus(session, clipId) {
@@ -99,12 +125,22 @@ export async function pollClipUntilReady(session, clipId, { intervalMs = 3000, m
   for (let i = 0; i < maxAttempts; i++) {
     const status = await getClipStatus(session, clipId);
     if (status.status === "failed") {
-      throw new Error(status.processing_error || "Clip processing failed");
+      throw new ClipUploadError("processing", {
+        message: status.processing_error || undefined,
+      });
     }
     if (READY_STATUSES.has(status.status)) return status;
     await new Promise((r) => setTimeout(r, intervalMs));
   }
-  throw new Error("Timed out waiting for clip processing");
+  throw new ClipUploadError("processing", { message: "Timed out waiting for clip processing" });
+}
+
+async function cleanupPendingClip(session, clipId) {
+  try {
+    await deletePendingClip(session, clipId);
+  } catch {
+    // Best-effort; original upload error is still thrown.
+  }
 }
 
 export async function uploadClipRows(session, playerId, rows, onProgress, { onProcessingStarted } = {}) {
@@ -114,8 +150,21 @@ export async function uploadClipRows(session, playerId, rows, onProgress, { onPr
     if (!row.file) continue;
     onProgress?.(i + 1, rows.length, "creating");
     const created = await createClip(session, playerId, row);
-    onProgress?.(i + 1, rows.length, "uploading");
-    await uploadToPresignedUrl(created.upload_url, row.file, created.upload_headers);
+    onProgress?.(i + 1, rows.length, "uploading", { percent: 0 });
+    try {
+      await uploadToPresignedUrl(
+        created.upload_url,
+        row.file,
+        created.upload_headers,
+        (loaded, total) => {
+          const percent = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : null;
+          onProgress?.(i + 1, rows.length, "uploading", { percent });
+        },
+      );
+    } catch (e) {
+      await cleanupPendingClip(session, created.clip_id);
+      throw e;
+    }
     onProgress?.(i + 1, rows.length, "completing");
     await markUploadComplete(session, created.clip_id);
     onProgress?.(i + 1, rows.length, "processing");

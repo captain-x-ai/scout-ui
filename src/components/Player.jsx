@@ -14,9 +14,10 @@ import { Spark } from "./ui/Spark";
 import { ProvBar } from "./ui/ProvBar";
 import { Clip } from "./Clip";
 import { UploadModal } from "./UploadModal";
+import { clipUploadErrorMessage, clipUploadStatusMessage } from "../api/clipUploadErrors";
 
 export function Player({
-  t, ar, player, need, updateReview, updatePlayer, uploadClips,
+  t, ar, player, need, updateReview, updatePlayer, uploadClips, deleteClip,
   regenerateSummary, loadPlayer,
 }) {
   const [win, setWin] = useState(5);
@@ -27,6 +28,8 @@ export function Player({
   const [uploadLocked, setUploadLocked] = useState(false);
   const [uploadCanClose, setUploadCanClose] = useState(false);
   const [uploadMsg, setUploadMsg] = useState("");
+  const [uploadError, setUploadError] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
   const [clipsPage, setClipsPage] = useState(1);
   const [clipsLoading, setClipsLoading] = useState(false);
 
@@ -85,24 +88,34 @@ export function Player({
     setShowUpload(false);
     setUploadLocked(false);
     setUploadCanClose(false);
+    setUploadError(false);
+    setUploadProgress(null);
+    setUploadMsg("");
   }
 
   async function addClips(rows) {
     setUploadLocked(true);
     setUploadBusy(true);
     setUploadCanClose(false);
-    setUploadMsg(t.uploadHint);
+    setUploadError(false);
+    setUploadProgress(null);
+    setUploadMsg(t.uploadPhaseCreating);
     try {
-      await uploadClips(player.id, rows, (cur, total, phase) => {
-        setUploadMsg(`${phase}… ${cur}/${total}`);
+      await uploadClips(player.id, rows, (cur, total, phase, extra) => {
+        const percent = extra?.percent ?? null;
+        setUploadProgress({ phase, percent, cur, total });
+        setUploadMsg(clipUploadStatusMessage(t, phase, percent));
       }, async () => {
         setUploadCanClose(true);
         setClipsPage(1);
         await loadPlayer(player.id, { clipsPage: 1 });
       });
       setShowUpload(false);
+      setUploadProgress(null);
     } catch (e) {
-      setUploadMsg(e.message || "Upload failed");
+      setUploadMsg(clipUploadErrorMessage(t, e));
+      setUploadError(true);
+      setUploadProgress(null);
       setUploadLocked(false);
       setUploadCanClose(true);
     } finally {
@@ -120,11 +133,15 @@ export function Player({
     await updateReview(player.id, r.id, patch);
   }
 
+  async function onDeleteClip(r) {
+    await deleteClip(player.id, r.id);
+  }
+
   return (
     <div className="fade">
       {showUpload && (
         <UploadModal t={t} ar={ar} player={player} locked={uploadLocked} closable={uploadCanClose || !uploadLocked}
-          busy={uploadBusy} statusMsg={uploadMsg}
+          busy={uploadBusy} statusMsg={uploadMsg} statusError={uploadError} uploadProgress={uploadProgress}
           onClose={closeUploadModal} onAdd={addClips} />
       )}
       <div className="no-print" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
@@ -262,7 +279,8 @@ export function Player({
           <div className="stagger" style={{ display: "flex", flexDirection: "column", gap: 12, opacity: clipsLoading ? 0.55 : 1, transition: "opacity .2s" }}>
             {timeline.map((r) => <Clip key={r.id} t={t} ar={ar} r={r}
               onAccept={() => onAccept(r)}
-              onConfirm={(patch) => onConfirm(r, patch)} />)}
+              onConfirm={(patch) => onConfirm(r, patch)}
+              onDelete={() => onDeleteClip(r)} />)}
           </div>
           {pag.totalPages > 1 && (
             <div className="no-print" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--line2)" }}>

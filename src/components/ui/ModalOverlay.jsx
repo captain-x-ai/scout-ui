@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 
 /** Full-screen backdrop; portals to body so position:fixed centering is reliable. */
-export function ModalOverlay({ children, onBackdropClick, ar = false }) {
+export function ModalOverlay({ children, onBackdropClick, ar = false, variant = "default" }) {
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -13,7 +13,7 @@ export function ModalOverlay({ children, onBackdropClick, ar = false }) {
 
   return createPortal(
     <div
-      className={`overlay no-print${ar ? " lang-ar" : ""}`}
+      className={`overlay no-print${ar ? " lang-ar" : ""}${variant === "cinema" ? " overlay-cinema" : ""}`}
       dir={ar ? "rtl" : "ltr"}
       onClick={onBackdropClick}
       role="presentation"

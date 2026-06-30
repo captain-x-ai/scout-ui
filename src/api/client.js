@@ -70,7 +70,7 @@ async function refreshAccessToken() {
 
 export async function apiFetch(path, options = {}, retried = false) {
   const method = (options.method || "GET").toUpperCase();
-  const dedupeKey = method === "GET" ? path : null;
+  const dedupeKey = method === "GET" && !retried ? path : null;
 
   if (dedupeKey && inFlightGets.has(dedupeKey)) {
     return inFlightGets.get(dedupeKey);
@@ -91,6 +91,7 @@ export async function apiFetch(path, options = {}, retried = false) {
   });
 
   if (res.status === 401 && !retried && !path.startsWith("/v1/auth/")) {
+    if (dedupeKey) inFlightGets.delete(dedupeKey);
     try {
       await refreshAccessToken();
       return apiFetch(path, options, true);

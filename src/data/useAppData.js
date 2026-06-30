@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useSession } from "../context/SessionContext";
 import { fetchOpenNeed } from "../api/needs.api";
 import {
@@ -7,7 +7,7 @@ import {
   listPlayers,
   patchPlayerStage,
 } from "../api/players.api";
-import { uploadClipRows } from "../api/clips.api";
+import { uploadClipRows, deletePendingClip } from "../api/clips.api";
 import { acceptReview, saveReview, regeneratePlayerSummary, pollPlayerSummaryUntilUpdated } from "../api/reviews.api";
 
 function sessionKey(session) {
@@ -45,7 +45,7 @@ export function useAppData() {
     }
   }, [key]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!key) {
       setPlayers([]);
       setNeed(null);
@@ -152,6 +152,14 @@ export function useAppData() {
     await loadPlayer(pid, { clipsPage: 1 });
   }, [loadPlayer]);
 
+  const deleteClip = useCallback(async (pid, clipId) => {
+    const s = sessionRef.current;
+    if (!s) return;
+    await deletePendingClip(s, clipId);
+    const page = playerDetails[pid]?.clipsPagination?.page || 1;
+    await loadPlayer(pid, { clipsPage: page });
+  }, [loadPlayer, playerDetails]);
+
   const regenerateSummary = useCallback(async (playerId, opts = {}) => {
     const s = sessionRef.current;
     if (!s) return null;
@@ -183,6 +191,7 @@ export function useAppData() {
     updatePlayer,
     updateReview,
     uploadClips,
+    deleteClip,
     regenerateSummary,
   };
 }
