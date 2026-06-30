@@ -16,7 +16,9 @@ const blankClip = () => ({
   file: null,
 });
 
-export function UploadModal({ t, ar, player, onClose, onAdd, locked, closable, busy, statusMsg }) {
+export function UploadModal({
+  t, ar, player, onClose, onAdd, locked, closable, busy, statusMsg, statusError, uploadProgress,
+}) {
   const [clip, setClip] = useState(blankClip);
   const fileInputRef = useRef(null);
   const set = (k, v) => setClip((s) => ({ ...s, [k]: v }));
@@ -47,6 +49,8 @@ export function UploadModal({ t, ar, player, onClose, onAdd, locked, closable, b
 
   const hasFile = !!clip.file;
   const fieldsDisabled = locked || !hasFile;
+  const showProgress = locked && uploadProgress && !statusError;
+  const uploadPct = uploadProgress?.phase === "uploading" ? uploadProgress.percent : null;
 
   return (
     <ModalOverlay onBackdropClick={closable ? handleClose : undefined} ar={ar}>
@@ -62,9 +66,35 @@ export function UploadModal({ t, ar, player, onClose, onAdd, locked, closable, b
             onClick={handleClose}
           />
         </div>
-        <div style={{ fontSize: 12.5, color: locked ? "var(--gold)" : "var(--muted)", marginBottom: 18, lineHeight: 1.5 }}>
+        <div style={{
+          fontSize: 12.5,
+          color: statusError ? "var(--signal)" : (locked ? "var(--gold)" : "var(--muted)"),
+          marginBottom: showProgress ? 10 : 18,
+          lineHeight: 1.5,
+        }}>
           {statusMsg || t.uploadHintOne || t.uploadHint}
         </div>
+
+        {showProgress && (
+          <div style={{ marginBottom: 18 }}>
+            <div style={{
+              height: 6,
+              borderRadius: 999,
+              background: "rgba(255,255,255,.08)",
+              overflow: "hidden",
+              border: "1px solid var(--line2)",
+            }}>
+              <div style={{
+                height: "100%",
+                borderRadius: 999,
+                background: "linear-gradient(90deg, var(--accent), var(--accent-bright))",
+                width: uploadPct != null ? `${uploadPct}%` : "35%",
+                transition: uploadPct != null ? "width 0.2s ease" : "none",
+                animation: uploadPct == null ? "uploadPulse 1.1s ease-in-out infinite alternate" : "none",
+              }} />
+            </div>
+          </div>
+        )}
 
         <input
           ref={fileInputRef}

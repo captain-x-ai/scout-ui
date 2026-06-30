@@ -20,13 +20,46 @@ export default function App() {
   const {
     players, need, loading: dataLoading, error: dataError,
     getPlayerView, loadPlayer, addPlayer, updatePlayer, updateReview,
-    uploadClips, regenerateSummary, reload,
+    uploadClips, deleteClip, regenerateSummary, reload,
   } = useAppData();
 
   const t = T[lang];
   const ar = lang === "ar";
   const player = sel ? getPlayerView(sel) : null;
   const prevViewRef = useRef(null);
+  const bootLatch = useRef(false);
+  const [initialDataReady, setInitialDataReady] = useState(false);
+
+  const showBootLoader = !bootLatch.current && (
+    authLoading || (isAuthenticated && session && !initialDataReady)
+  );
+
+  useEffect(() => {
+    if (!showBootLoader) {
+      document.getElementById("initial-splash")?.remove();
+    }
+  }, [showBootLoader]);
+
+  useEffect(() => {
+    if (!isAuthenticated) bootLatch.current = false;
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!session) {
+      setInitialDataReady(false);
+      return;
+    }
+    if (!dataLoading) setInitialDataReady(true);
+  }, [session, dataLoading]);
+
+  useEffect(() => {
+    if (!bootLatch.current && !authLoading && isAuthenticated && session && initialDataReady) {
+      bootLatch.current = true;
+    }
+    if (!bootLatch.current && !authLoading && !isAuthenticated) {
+      bootLatch.current = true;
+    }
+  }, [authLoading, isAuthenticated, session, initialDataReady]);
 
   useEffect(() => {
     if (view === "watchlist" && prevViewRef.current === "player" && session) {
@@ -59,11 +92,10 @@ export default function App() {
     navigate({ view: "watchlist" }, { replace: true });
   };
 
-  if (authLoading) {
+  if (showBootLoader) {
     return (
-      <div className="kx" style={{ minHeight: "100vh", display: "grid", placeItems: "center", color: "var(--muted)" }}>
+      <div className={`kx ${ar ? "lang-ar" : ""}`} dir={ar ? "rtl" : "ltr"} aria-hidden>
         <style>{CSS}</style>
-        Loading…
       </div>
     );
   }
@@ -109,6 +141,7 @@ export default function App() {
                 <Player t={t} ar={ar} player={player} need={need}
                   updateReview={updateReview} updatePlayer={updatePlayer}
                   uploadClips={uploadClips}
+                  deleteClip={deleteClip}
                   regenerateSummary={regenerateSummary}
                   loadPlayer={loadPlayer} />
               )}

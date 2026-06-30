@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Check, Sparkles, Pencil, Clock, Crosshair, Zap, Loader2 } from "lucide-react";
+import { Check, Sparkles, Pencil, Clock, Crosshair, Zap, Loader2, Trash2 } from "lucide-react";
 import { useSession } from "../context/SessionContext";
 import { getClipStatus } from "../api/clips.api";
 import { recColor } from "../lib/constants";
 import { Mascot } from "./ui/Mascot";
 import { RecTag } from "./ui/RecTag";
 import { ClipPreviewModal } from "./ClipPreviewModal";
+import { ConfirmDialog } from "./ui/ConfirmDialog";
 
 const PLAYBACK_READY = new Set(["ai_analyzing", "completed", "ready"]);
 
@@ -17,9 +18,12 @@ function clipProcessingLabel(t, status) {
   return t.videoProcessing;
 }
 
-export function Clip({ t, ar, r, onAccept, onConfirm }) {
+export function Clip({ t, ar, r, onAccept, onConfirm, onDelete }) {
   const session = useSession();
   const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [preview, setPreview] = useState(false);
   const [mediaLoading, setMediaLoading] = useState(false);
   const [mediaError, setMediaError] = useState(null);
@@ -35,6 +39,7 @@ export function Clip({ t, ar, r, onAccept, onConfirm }) {
   const reviewReady = !!r.reviewReady;
   const aiAnalyzing = pending && mediaReady && !aiDraftReady;
   const videoProcessing = pending && !mediaReady;
+  const awaitingUpload = r.status === "pending_upload";
   const processingLabel = videoProcessing ? clipProcessingLabel(t, r.status) : null;
   const previewClip = cachedMedia ? { ...r, ...cachedMedia } : r;
   const showProcessingBlock = reviewReady || aiAnalyzing || videoProcessing;
@@ -65,8 +70,34 @@ export function Clip({ t, ar, r, onAccept, onConfirm }) {
     }
   }
 
+  async function confirmDelete() {
+    if (!onDelete || deleting) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await onDelete();
+      setShowDeleteConfirm(false);
+    } catch (e) {
+      setDeleteError(e.message || t.deleteClipFailed);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <>
+      <ConfirmDialog
+        ar={ar}
+        open={showDeleteConfirm}
+        title={t.deleteClip}
+        message={t.deleteClipConfirm}
+        confirmLabel={t.deleteClip}
+        cancelLabel={t.cancel}
+        onConfirm={confirmDelete}
+        onCancel={() => { if (!deleting) setShowDeleteConfirm(false); }}
+        busy={deleting}
+        danger
+      />
       {preview && cachedMedia?.videoUrl && (
         <ClipPreviewModal t={t} ar={ar} clip={previewClip} onClose={() => setPreview(false)} />
       )}
@@ -231,6 +262,23 @@ export function Clip({ t, ar, r, onAccept, onConfirm }) {
               <div className="no-print" style={{ display: "flex", gap: 9, marginTop: 12, flexWrap: "wrap", alignItems: "center" }}>
                 <button className="btn btn-gold" onClick={() => { setText(r.ai); setScore(r.aiScore ?? r.score ?? 6.5); setRec(r.aiRec ?? r.rec ?? "monitor"); setEditing(true); }}><Pencil size={14} />{t.editc}</button>
                 <button className="btn btn-ghost" onClick={onAccept}><Check size={14} />{t.accept}</button>
+              </div>
+            )}
+            {awaitingUpload && !editing && (
+              <div className="no-print" style={{ marginTop: 12 }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  disabled={deleting}
+                  onClick={() => setShowDeleteConfirm(true)}
+                  style={{ color: "var(--pass)", borderColor: "rgba(229,86,107,.35)" }}
+                >
+                  <Trash2 size={14} />
+                  {deleting ? "…" : t.deleteClip}
+                </button>
+                {deleteError && (
+                  <div style={{ fontSize: 12, color: "var(--signal)", marginTop: 8 }}>{deleteError}</div>
+                )}
               </div>
             )}
             {pending && reviewReady && <div style={{ fontSize: 11, color: "var(--muted2)", marginTop: 8, fontStyle: "italic" }}>{t.pendingNote}</div>}

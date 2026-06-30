@@ -42,7 +42,7 @@ export function MyPlayers({ t, ar, players, need, loading, updatePlayer, onAdd, 
   if (loading && players.length === 0) {
     return (
       <div className="fade" style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>
-        Loading players…
+        {t.loadingPlayers}
       </div>
     );
   }
