@@ -76,8 +76,15 @@ input,select,textarea{font-family:inherit}
 .fld:focus{border-color:var(--accent)}
 .fld-label{font-size:11.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-bottom:7px;display:block}
 .overlay{position:fixed;inset:0;background:rgba(7,2,24,.72);backdrop-filter:blur(4px);z-index:50;
-  display:flex;align-items:center;justify-content:center;padding:24px;animation:fade .25s ease both}
-.modal{width:100%;max-width:620px;max-height:88vh;overflow:auto}
+  overflow-y:auto;-webkit-overflow-scrolling:touch;padding:24px;
+  display:flex;align-items:flex-start;justify-content:center;
+  color:var(--cream);font-family:'Fustat',system-ui,sans-serif;
+  animation:overlayIn .25s ease both}
+.overlay.lang-ar{font-family:'Noto Kufi Arabic',sans-serif}
+.overlay.lang-ar .serif{font-family:'Noto Kufi Arabic',sans-serif;font-weight:800}
+.overlay.lang-ar .mono{font-family:'Noto Kufi Arabic',sans-serif}
+@keyframes overlayIn{from{opacity:0}to{opacity:1}}
+.modal{width:100%;max-width:620px;max-height:calc(100vh - 48px);overflow:auto;margin:auto;flex-shrink:0}
 .flagpick{width:42px;height:42px;border-radius:11px;border:1px solid var(--line2);background:var(--panel2);
   font-size:20px;cursor:pointer;transition:.15s}
 .flagpick:hover{border-color:var(--gold)}

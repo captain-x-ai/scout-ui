@@ -1,8 +1,4 @@
-/* ============================== AI SUMMARY SERVICE ==============================
-   FUTURE API BOUNDARY. Today the summary is the static {en, ar} text carried on
-   the player fixture; later this becomes a generated call to the AI summary
-   service. Components read it through getSummary so the call site is already the
-   seam. */
+/* AI player summary from player_stats.ai_summary (via mapPlayerDetail). */
 export function getSummary(player) {
-  return player.summary || null; // future: generate from the player's reviews
+  return player.summary || null;
 }

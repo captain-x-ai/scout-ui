@@ -1,6 +1,9 @@
-/* ============================== NEEDS / BRIEF SERVICE ==============================
-   FUTURE API BOUNDARY. The open need is defined by the Sporting Director; today
-   it's a static fixture, later a call to the Needs API. */
-import { OPEN_NEED } from "./_fixtures";
+import { apiFetch } from "./client";
+import { mapScoutingNeed } from "./mappers";
 
-export const getOpenNeed = () => OPEN_NEED;
+export async function fetchOpenNeed(session) {
+  const data = await apiFetch(
+    `/v1/clubs/${session.clubId}/sports/${session.sportId}/scouting-needs/active`,
+  );
+  return mapScoutingNeed(data.need);
+}

@@ -1,34 +1,68 @@
-/* ============================== REVIEWS / FOOTAGE SERVICE ==============================
-   FUTURE API BOUNDARY. Reviews currently travel nested inside each player (see
-   players.api). This module owns the two review-related operations that already
-   reach out / shape data: drafting an AI observation, and turning uploaded clip
-   rows into pending reviews. */
+import { apiFetch } from "./client";
+import { getClipStatus } from "./clips.api";
+import { getPlayer } from "./players.api";
 
-// Live call to the LLM service to (re)draft a single clip observation.
-// Returns the drafted text, or null on failure (caller keeps the existing draft).
-// NOTE: request is intentionally unchanged from the pre-refactor app.
-export async function draftObservation({ player, review }) {
-  const prompt = `You are a professional football scout's assistant. Write ONE concise, specific scouting observation (max 32 words, neutral tone) for this tagged match event. Output ONLY the observation, no preamble.\nPlayer: ${player.name}, ${player.pos}, age ${player.age}\nEvent: "${review.tag}" vs ${review.opp}, minute ${review.minute}.`;
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, messages: [{ role: "user", content: prompt }] }) });
-    const data = await res.json();
-    return data.content.filter((c) => c.type === "text").map((c) => c.text).join(" ").trim();
-  } catch (e) { return null; /* keep existing draft on failure */ }
+export async function acceptReview(session, clipId) {
+  return apiFetch(`/v1/clubs/${session.clubId}/clips/${clipId}/review`, {
+    method: "PATCH",
+    body: JSON.stringify({ action: "accept" }),
+  });
 }
 
-// Turn uploaded clip rows into new "pending" reviews for a player
-// (was the body of Player.addClips).
-export function buildClipReviews(player, rows) {
-  const base = player.reviews.reduce((m, r) => Math.max(m, r.order), 0);
-  const today = new Date().toISOString().slice(0, 10);
-  return rows.map((row, i) => ({
-    id: "u" + Date.now() + i, order: base + i + 1, type: "pending",
-    score: null, rec: null, conf: null,
-    minute: row.minute || 0, opp: row.opp || "—", tag: row.tag || "Clip",
-    date: row.date || today, ident: row.ident || "",
-    ai: `${player.name} involved in ${(row.tag || "a moment").toLowerCase()} vs ${row.opp || "the opponent"} around the ${row.minute || "?"}' mark.`,
-    human: null, editDelta: 0,
-  }));
+export async function saveReview(session, clipId, { score, rec, human }) {
+  return apiFetch(`/v1/clubs/${session.clubId}/clips/${clipId}/review`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      action: "save",
+      human_review: human,
+      human_score: score,
+      human_verdict: rec,
+    }),
+  });
+}
+
+function aiDraftText(clip) {
+  return clip?.review?.ai?.review || "";
+}
+
+export async function regenerateObservation(session, clipId) {
+  await apiFetch(`/v1/clubs/${session.clubId}/clips/${clipId}/regenerate-ai-draft`, {
+    method: "POST",
+    body: "{}",
+  });
+
+  const previous = await getClipStatus(session, clipId);
+  const prevText = aiDraftText(previous);
+
+  for (let i = 0; i < 40; i++) {
+    await new Promise((r) => setTimeout(r, 2500));
+    const status = await getClipStatus(session, clipId);
+    const text = aiDraftText(status);
+    if (text && text !== prevText) return text;
+  }
+  return null;
+}
+
+export async function regeneratePlayerSummary(session, playerId) {
+  return apiFetch(
+    `/v1/clubs/${session.clubId}/sports/${session.sportId}/players/${playerId}/regenerate-summary`,
+    { method: "POST", body: "{}" },
+  );
+}
+
+function summaryText(player) {
+  return player?.summary?.en || player?.playerStats?.aiSummary || "";
+}
+
+export async function pollPlayerSummaryUntilUpdated(session, playerId, prevText, opts = {}) {
+  for (let i = 0; i < 40; i++) {
+    await new Promise((r) => setTimeout(r, 3000));
+    const detail = await getPlayer(session, playerId, {
+      clipsPage: opts.clipsPage,
+      clipsPageSize: opts.clipsPageSize,
+    });
+    const text = summaryText(detail);
+    if (text && text !== prevText) return detail;
+  }
+  return null;
 }

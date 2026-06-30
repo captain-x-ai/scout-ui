@@ -26,10 +26,10 @@ export function computeEval(reviews, windowN, humanOnly) {
   return { score: num / den, humanCount, aiCount, n: pool.length, confidence, trend, latest };
 }
 export function overruleRate(reviews) {
-  const human = reviews.filter((r) => r.type === "human");
-  if (!human.length) return 0;
-  const over = human.filter((r) => r.editDelta >= 2).length;
-  return Math.round((over / human.length) * 100);
+  const reviewed = reviews.filter((r) => r.type !== "pending");
+  if (!reviewed.length) return 0;
+  const human = reviewed.filter((r) => r.type === "human").length;
+  return Math.round((human / reviewed.length) * 100);
 }
 export function fitScore(player, need) {
   let s = 0;
@@ -45,4 +45,38 @@ export function fitScore(player, need) {
 // that were previously copy-pasted in Player (hero) and Report.
 export function recForScore(score) {
   return score >= 7.3 ? "sign" : score >= 6.3 ? "monitor" : "pass";
+}
+
+/** EWMA score for window 3, 5, or 8 from normalized playerStats. */
+export function ewmaScore(playerStats, windowN = 5) {
+  if (!playerStats) return null;
+  if (windowN === 3) return playerStats.score3 ?? null;
+  if (windowN === 8) return playerStats.score8 ?? null;
+  return playerStats.score5 ?? null;
+}
+
+/** Preferred display score: EWMA score_5, then legacy eval_score. */
+export function displayScore(player, windowN = 5) {
+  const fromStats = ewmaScore(player?.playerStats, windowN);
+  if (fromStats != null) return fromStats;
+  return player?.evalScore ?? null;
+}
+
+/** Chronological match scores from scout-finalized reviews (for sparkline). */
+export function matchScoreTrend(reviews) {
+  const pool = (reviews || [])
+    .filter((r) => r.type !== "pending" && r.score != null)
+    .sort((a, b) => matchTime(a) - matchTime(b));
+  return pool.map((r) => r.score);
+}
+
+/** Provenance metadata from API evaluation block. */
+export function evalProvenance(evaluation) {
+  if (!evaluation) return null;
+  return {
+    humanCount: evaluation.human_count ?? 0,
+    aiCount: evaluation.ai_count ?? 0,
+    n: evaluation.n ?? 0,
+    confidence: evaluation.confidence ?? 0,
+  };
 }
