@@ -4,6 +4,7 @@ const VIEW_ALIASES = {
   watchlist: "watchlist",
   addplayer: "addplayer",
   player: "player",
+  settings: "settings",
 };
 
 /**
@@ -16,6 +17,14 @@ export function parsePath(pathname) {
 
   if (parts.length === 0 || parts[0] === "auth") {
     return { view: "watchlist" };
+  }
+
+  if (parts[0] !== "players" && parts[0] !== "club") {
+    return { view: "watchlist" };
+  }
+
+  if (parts[0] === "club" && parts[1] === "needs") {
+    return { view: "settings" };
   }
 
   if (parts[0] !== "players") {
@@ -54,6 +63,8 @@ export function buildPath(route) {
       return "/players/new";
     case "player":
       return route.playerId ? `/players/${route.playerId}` : "/players";
+    case "settings":
+      return "/club/needs";
     default:
       return "/players";
   }

@@ -17,7 +17,7 @@ import { UploadModal } from "./UploadModal";
 import { clipUploadErrorMessage, clipUploadStatusMessage } from "../api/clipUploadErrors";
 
 export function Player({
-  t, ar, player, need, updateReview, updatePlayer, uploadClips, deleteClip,
+  t, ar, player, selectedNeed, updateReview, updatePlayer, uploadClips, deleteClip,
   regenerateSummary, loadPlayer,
 }) {
   const [win, setWin] = useState(5);
@@ -67,7 +67,9 @@ export function Player({
     ? (prov.confidence >= 70 ? t.confHigh : prov.confidence >= 45 ? t.confMed : t.confLow)
     : "—";
   const orate = player.overruleRate != null ? player.overruleRate : overruleRate(timeline);
-  const fit = player.fitScore != null ? player.fitScore : fitScore(player, need);
+  const fit = selectedNeed
+    ? (player.fitScore != null ? player.fitScore : fitScore(player, selectedNeed))
+    : null;
   const summary = getSummary(player);
   const hasScoutReviewed = timeline.some((r) => r.scoutReviewed || r.type !== "pending");
 
@@ -164,7 +166,11 @@ export function Player({
           </div>
           <div style={{ marginTop: 14, display: "flex", gap: 9, alignItems: "center", flexWrap: "wrap" }}>
             <StatusPill stage={player.stage} t={t} />
-            <span className="tag" style={{ color: "var(--green-bright)", background: "rgba(140,107,255,.14)" }}><Crosshair size={12} />{t.fit} {fit}%</span>
+            {fit != null && (
+              <span className="tag" style={{ color: "var(--green-bright)", background: "rgba(140,107,255,.14)" }}>
+                <Crosshair size={12} />{t.fit} {fit}%
+              </span>
+            )}
             {score != null && <RecTag rec={recForScore(score)} t={t} />}
             <div className="no-print" style={{ marginInlineStart: "auto", display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 11.5, color: "var(--muted)" }}>{t.stage}</span>

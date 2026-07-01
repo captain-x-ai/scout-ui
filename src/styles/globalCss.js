@@ -151,6 +151,55 @@ input,select,textarea{font-family:inherit}
 .app-preloader-msg{position:relative;z-index:1;margin:0;font-size:14px;font-weight:600;
   color:var(--muted);letter-spacing:.2px}
 @keyframes preloaderGlow{from{opacity:.55;transform:scale(.92)}to{opacity:1;transform:scale(1.05)}}
+
+/* Club needs */
+.club-needs .need-summary-bar{display:flex;align-items:center;gap:20px;padding:18px 22px;margin-bottom:18px;flex-wrap:wrap}
+.need-summary-count{display:flex;flex-direction:column;align-items:flex-start;gap:2px;flex-shrink:0;padding-inline-end:20px;border-inline-end:1px solid var(--line2)}
+.need-summary-num{font-size:32px;font-weight:700;color:var(--accent-bright);line-height:1}
+.need-summary-label{font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted2)}
+.need-summary-hint{margin:0;flex:1;min-width:220px;font-size:13.5px;line-height:1.55;color:var(--muted)}
+.need-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,380px),1fr));gap:16px}
+.need-card{position:relative;overflow:hidden;padding:0;transition:border-color .2s,transform .2s}
+.need-card:hover{border-color:rgba(140,107,255,.35);transform:translateY(-2px)}
+.need-card-accent{position:absolute;inset-inline:0;top:0;height:3px;
+  background:linear-gradient(90deg,var(--primary),var(--accent-bright),var(--good))}
+.need-card-body{padding:22px 22px 20px}
+.need-card-head{display:flex;align-items:flex-start;gap:14px;margin-bottom:18px}
+.need-card-pos{flex-shrink:0;width:52px;height:52px;border-radius:14px;display:grid;place-items:center;
+  font-size:17px;font-weight:700;color:var(--accent-bright);
+  background:rgba(104,63,234,.18);border:1px solid rgba(140,107,255,.28)}
+.need-card-title{margin:0;font-size:18px;font-weight:700;color:var(--cream);line-height:1.25}
+.need-card-sub{margin:5px 0 0;font-size:13px;color:var(--muted);line-height:1.4}
+.need-card-date{flex-shrink:0;font-size:11px;color:var(--muted2);white-space:nowrap;padding-top:4px}
+.need-criteria-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:4px}
+.need-criterion{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;
+  background:var(--panel2);border:1px solid var(--line2);min-width:0}
+.need-criterion-icon{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;
+  background:rgba(255,255,255,.04);flex-shrink:0}
+.need-criterion-label{font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted2);margin-bottom:2px}
+.need-criterion-value{font-size:13px;font-weight:600;color:var(--cream);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.need-priorities{margin-top:18px;padding-top:18px;border-top:1px solid var(--line2)}
+.need-section-label{display:flex;align-items:center;gap:7px;font-size:11px;letter-spacing:1px;
+  text-transform:uppercase;color:var(--gold);margin-bottom:14px;font-weight:700}
+.need-weight-bars{display:flex;flex-direction:column;gap:11px}
+.need-weight-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:5px}
+.need-weight-name{font-size:13px;color:var(--cream)}
+.need-weight-pct{font-size:12px;color:var(--muted)}
+.need-weight-track{height:7px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden}
+.need-weight-fill{height:100%;border-radius:999px;
+  background:linear-gradient(90deg,var(--primary),var(--accent-bright));transition:width .6s ease}
+.need-card-foot{margin-top:18px;padding-top:16px;border-top:1px solid var(--line2)}
+.need-use-btn{width:100%;justify-content:center;font-size:13px}
+.need-empty{padding:48px 32px;text-align:center;max-width:480px;margin:0 auto}
+.need-empty-icon{width:64px;height:64px;margin:0 auto 16px;border-radius:18px;display:grid;place-items:center;
+  background:rgba(104,63,234,.12);border:1px solid var(--line);color:var(--muted)}
+.need-empty-title{font-size:17px;font-weight:600;color:var(--cream);margin-bottom:8px}
+.need-empty-hint{margin:0;font-size:13.5px;line-height:1.6;color:var(--muted)}
+@media(max-width:720px){
+  .need-criteria-grid{grid-template-columns:1fr}
+  .need-summary-count{border-inline-end:none;padding-inline-end:0;padding-bottom:12px;border-bottom:1px solid var(--line2);width:100%}
+}
+
 @media(max-width:640px){
   .video-hero-stage{border-radius:14px;max-height:56vh}
   .video-hero-caption{padding:14px 14px 12px}

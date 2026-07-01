@@ -1,9 +1,9 @@
-import { Users, LogOut, Building2, Check } from "lucide-react";
+import { Users, LogOut, Building2, Check, Target } from "lucide-react";
 import { LOGO_EN } from "../assets/logos";
 import { Mascot } from "./ui/Mascot";
 import { useAuth } from "../context/AuthContext";
 
-export function Shell({ t, ar, view, navigate, onLogout, onClubChange, children }) {
+export function Shell({ t, ar, view, onSidebarNav, onLogout, onClubChange, children }) {
   const { user, scoutClubs, switchClub, switchingClub } = useAuth();
   const activeClubId = user?.club_id;
   const displayName = user?.name || t.scoutName;
@@ -11,6 +11,7 @@ export function Shell({ t, ar, view, navigate, onLogout, onClubChange, children 
 
   const nav = [
     { k: "watchlist", icon: Users, label: t.watchlist },
+    { k: "settings", icon: Target, label: t.clubNeeds },
   ];
 
   const onSelectClub = async (clubId) => {
@@ -32,7 +33,7 @@ export function Shell({ t, ar, view, navigate, onLogout, onClubChange, children 
         </div>
         <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {nav.map((n) => (
-            <div key={n.k} className={`nav-item ${view === n.k || (view === "player" && n.k === "watchlist") ? "active" : ""}`} onClick={() => navigate({ view: "watchlist" })}>
+            <div key={n.k} className={`nav-item ${view === n.k || (view === "player" && n.k === "watchlist") ? "active" : ""}`} onClick={() => onSidebarNav(n.k)}>
               <n.icon size={18} />
               <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2, minWidth: 0 }}>
                 <span>{n.label}</span>

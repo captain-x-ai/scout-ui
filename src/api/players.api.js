@@ -15,6 +15,7 @@ export async function listPlayers(session, params = {}) {
   if (params.position) qs.set("position", params.position);
   if (params.stage) qs.set("stage", params.stage);
   if (params.sort) qs.set("sort", params.sort);
+  if (params.needId) qs.set("need_id", params.needId);
   const q = qs.toString();
   const data = await apiFetch(`${sportPath(session)}/players${q ? `?${q}` : ""}`);
   return (data.items || []).map(mapPlayerListItem);
@@ -26,6 +27,7 @@ export async function getPlayer(session, playerId, params = {}) {
   if (params.humanOnly) qs.set("human_only", "true");
   if (params.clipsPage) qs.set("clips_page", String(params.clipsPage));
   if (params.clipsPageSize) qs.set("clips_page_size", String(params.clipsPageSize));
+  if (params.needId) qs.set("need_id", params.needId);
   const q = qs.toString();
   const data = await apiFetch(`${sportPath(session)}/players/${playerId}${q ? `?${q}` : ""}`);
   return mapPlayerDetail(data);

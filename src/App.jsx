@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { CSS } from "./styles/globalCss";
 import { T } from "./i18n/translations";
 import { useAuth } from "./context/AuthContext";
@@ -9,6 +9,7 @@ import { Login } from "./components/Login";
 import { Shell } from "./components/Shell";
 import { MyPlayers } from "./components/MyPlayers";
 import { AddPlayer } from "./components/AddPlayer";
+import { ClubNeedsSettings } from "./components/ClubNeedsSettings";
 import { Player } from "./components/Player";
 
 export default function App() {
@@ -18,7 +19,8 @@ export default function App() {
   const session = useSession();
   const { view, sel, navigate, resetToLogin } = useAppNavigation({ isAuthenticated, authLoading });
   const {
-    players, need, loading: dataLoading, error: dataError,
+    players, needs, selectedNeedId, selectedNeed, setSelectedNeedId,
+    loading: dataLoading, error: dataError,
     getPlayerView, loadPlayer, addPlayer, updatePlayer, updateReview,
     uploadClips, deleteClip, regenerateSummary, reload,
   } = useAppData();
@@ -26,7 +28,6 @@ export default function App() {
   const t = T[lang];
   const ar = lang === "ar";
   const player = sel ? getPlayerView(sel) : null;
-  const prevViewRef = useRef(null);
   const bootLatch = useRef(false);
   const [initialDataReady, setInitialDataReady] = useState(false);
 
@@ -61,18 +62,15 @@ export default function App() {
     }
   }, [authLoading, isAuthenticated, session, initialDataReady]);
 
-  useEffect(() => {
-    if (view === "watchlist" && prevViewRef.current === "player" && session) {
-      reload();
-    }
-    prevViewRef.current = view;
-  }, [view, session, reload]);
+  const onSidebarNav = useCallback((targetView) => {
+    reload();
+    navigate({ view: targetView });
+  }, [reload, navigate]);
 
-  useEffect(() => {
-    if (view === "player" && sel && session) {
-      loadPlayer(sel).catch(() => {});
-    }
-  }, [view, sel, session, loadPlayer]);
+  const onUseNeed = useCallback((needId) => {
+    setSelectedNeedId(needId);
+    navigate({ view: "watchlist" });
+  }, [setSelectedNeedId, navigate]);
 
   const onAddPlayer = async (data) => {
     const id = await addPlayer(data);
@@ -91,6 +89,12 @@ export default function App() {
   const onClubChange = () => {
     navigate({ view: "watchlist" }, { replace: true });
   };
+
+  useEffect(() => {
+    if (view === "player" && sel && session) {
+      loadPlayer(sel).catch(() => {});
+    }
+  }, [view, sel, session, loadPlayer, selectedNeedId]);
 
   if (showBootLoader) {
     return (
@@ -122,7 +126,7 @@ export default function App() {
             </div>
           )
           : (
-            <Shell t={t} ar={ar} view={view} navigate={navigate}
+            <Shell t={t} ar={ar} view={view} onSidebarNav={onSidebarNav}
               onLogout={onLogout}
               onClubChange={onClubChange}>
               {dataError && (
@@ -131,14 +135,19 @@ export default function App() {
                 </div>
               )}
               {view === "watchlist" && (
-                <MyPlayers t={t} ar={ar} players={players} need={need} loading={dataLoading}
+                <MyPlayers t={t} ar={ar} players={players} needs={needs}
+                  selectedNeedId={selectedNeedId} setSelectedNeedId={setSelectedNeedId}
+                  selectedNeed={selectedNeed} loading={dataLoading}
                   updatePlayer={updatePlayer} onAdd={() => navigate({ view: "addplayer" })} onOpen={onOpenPlayer} />
+              )}
+              {view === "settings" && (
+                <ClubNeedsSettings t={t} ar={ar} needs={needs} loading={dataLoading} onUseNeed={onUseNeed} />
               )}
               {view === "addplayer" && (
                 <AddPlayer t={t} ar={ar} onSave={onAddPlayer} onCancel={() => navigate({ view: "watchlist" })} />
               )}
               {view === "player" && player && (
-                <Player t={t} ar={ar} player={player} need={need}
+                <Player t={t} ar={ar} player={player} selectedNeed={selectedNeed}
                   updateReview={updateReview} updatePlayer={updatePlayer}
                   uploadClips={uploadClips}
                   deleteClip={deleteClip}

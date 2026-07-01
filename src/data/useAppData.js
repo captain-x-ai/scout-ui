@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { useSession } from "../context/SessionContext";
-import { fetchOpenNeed } from "../api/needs.api";
+import { fetchScoutingNeeds } from "../api/needs.api";
 import {
   createPlayer,
   getPlayer,
@@ -9,9 +9,14 @@ import {
 } from "../api/players.api";
 import { uploadClipRows, deletePendingClip } from "../api/clips.api";
 import { acceptReview, saveReview, regeneratePlayerSummary, pollPlayerSummaryUntilUpdated } from "../api/reviews.api";
+import { loadNeedFilter, saveNeedFilter } from "../lib/needs";
 
 function sessionKey(session) {
   return session ? `${session.clubId}:${session.sportId}` : null;
+}
+
+function validNeedId(needId, needList) {
+  return needId && needList.some((n) => n.id === needId) ? needId : null;
 }
 
 export function useAppData() {
@@ -21,10 +26,24 @@ export function useAppData() {
   sessionRef.current = session;
 
   const [players, setPlayers] = useState([]);
-  const [need, setNeed] = useState(null);
+  const [needs, setNeeds] = useState([]);
+  const [selectedNeedId, setSelectedNeedIdState] = useState(null);
+  const selectedNeedIdRef = useRef(null);
+  selectedNeedIdRef.current = selectedNeedId;
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [playerDetails, setPlayerDetails] = useState({});
+
+  const selectedNeed = selectedNeedId
+    ? needs.find((n) => n.id === selectedNeedId) || null
+    : null;
+
+  const fetchPlayers = useCallback(async (needId) => {
+    const s = sessionRef.current;
+    if (!s) return [];
+    return listPlayers(s, { needId: needId || undefined });
+  }, [key]);
 
   const reload = useCallback(async () => {
     const s = sessionRef.current;
@@ -32,23 +51,47 @@ export function useAppData() {
     setLoading(true);
     setError(null);
     try {
-      const [plist, openNeed] = await Promise.all([
-        listPlayers(s),
-        fetchOpenNeed(s).catch(() => null),
-      ]);
+      const needList = await fetchScoutingNeeds(s).catch(() => []);
+      const saved = loadNeedFilter(s.clubId, s.sportId);
+      const needId = validNeedId(selectedNeedIdRef.current || saved, needList);
+      const plist = await fetchPlayers(needId);
+      setNeeds(needList);
       setPlayers(plist);
-      setNeed(openNeed);
+      setSelectedNeedIdState(needId);
+      if (needId) saveNeedFilter(s.clubId, s.sportId, needId);
     } catch (e) {
       setError(e.message || "Failed to load data");
     } finally {
       setLoading(false);
     }
-  }, [key]);
+  }, [key, fetchPlayers]);
+
+  const setSelectedNeedId = useCallback(async (needId) => {
+    const s = sessionRef.current;
+    const nextId = needId || null;
+    setSelectedNeedIdState(nextId);
+    selectedNeedIdRef.current = nextId;
+    if (s) saveNeedFilter(s.clubId, s.sportId, nextId);
+
+    if (!s) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const plist = await fetchPlayers(nextId);
+      setPlayers(plist);
+    } catch (e) {
+      setError(e.message || "Failed to load data");
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchPlayers]);
 
   useLayoutEffect(() => {
     if (!key) {
       setPlayers([]);
-      setNeed(null);
+      setNeeds([]);
+      setSelectedNeedIdState(null);
+      selectedNeedIdRef.current = null;
       setPlayerDetails({});
       setLoading(false);
       return;
@@ -60,14 +103,19 @@ export function useAppData() {
     setError(null);
 
     const s = sessionRef.current;
-    Promise.all([
-      listPlayers(s),
-      fetchOpenNeed(s).catch(() => null),
-    ])
-      .then(([plist, openNeed]) => {
+    const saved = loadNeedFilter(s.clubId, s.sportId);
+
+    fetchScoutingNeeds(s)
+      .catch(() => [])
+      .then(async (needList) => {
+        if (cancelled) return;
+        const needId = validNeedId(saved, needList);
+        setSelectedNeedIdState(needId);
+        selectedNeedIdRef.current = needId;
+        setNeeds(needList);
+        const plist = await fetchPlayers(needId);
         if (cancelled) return;
         setPlayers(plist);
-        setNeed(openNeed);
       })
       .catch((e) => {
         if (cancelled) return;
@@ -78,7 +126,7 @@ export function useAppData() {
       });
 
     return () => { cancelled = true; };
-  }, [key]);
+  }, [key, fetchPlayers]);
 
   const getPlayerView = useCallback((id) => {
     if (playerDetails[id]) return playerDetails[id];
@@ -88,7 +136,8 @@ export function useAppData() {
   const loadPlayer = useCallback(async (id, opts = {}) => {
     const s = sessionRef.current;
     if (!s || !id) return null;
-    const detail = await getPlayer(s, id, opts);
+    const needId = opts.needId ?? selectedNeedIdRef.current;
+    const detail = await getPlayer(s, id, { ...opts, needId });
     setPlayerDetails((d) => ({ ...d, [id]: detail }));
     setPlayers((ps) => ps.map((p) => {
       if (p.id !== id) return p;
@@ -101,6 +150,7 @@ export function useAppData() {
         playerStats: detail.playerStats ?? p.playerStats,
         summary: detail.summary ?? p.summary,
         evalScore: detail.evalScore ?? p.evalScore,
+        fitScore: detail.fitScore ?? p.fitScore,
       };
     }));
     return detail;
@@ -110,7 +160,9 @@ export function useAppData() {
     const s = sessionRef.current;
     if (!s) throw new Error("No session");
     const created = await createPlayer(s, form);
-    const detail = await getPlayer(s, created.id);
+    const detail = await getPlayer(s, created.id, {
+      needId: selectedNeedIdRef.current || undefined,
+    });
     setPlayers((ps) => [detail, ...ps]);
     setPlayerDetails((d) => ({ ...d, [detail.id]: detail }));
     return detail.id;
@@ -181,7 +233,10 @@ export function useAppData() {
 
   return {
     players,
-    need,
+    needs,
+    selectedNeedId,
+    selectedNeed,
+    setSelectedNeedId,
     loading,
     error,
     reload,

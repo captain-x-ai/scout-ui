@@ -6,8 +6,12 @@ import { Avatar } from "./ui/Avatar";
 import { StatusPill } from "./ui/StatusPill";
 import { StageSelect } from "./ui/StageSelect";
 import { Header } from "./ui/Header";
+import { NeedSwitcher } from "./NeedSwitcher";
 
-export function MyPlayers({ t, ar, players, need, loading, updatePlayer, onAdd, onOpen }) {
+export function MyPlayers({
+  t, ar, players, needs, selectedNeedId, setSelectedNeedId, selectedNeed,
+  loading, updatePlayer, onAdd, onOpen,
+}) {
   const [q, setQ] = useState("");
   const [fpos, setFpos] = useState("all");
   const [fstage, setFstage] = useState("all");
@@ -20,7 +24,9 @@ export function MyPlayers({ t, ar, players, need, loading, updatePlayer, onAdd, 
     const ev = score != null
       ? { score }
       : computeEval(p.reviews || [], 5, false);
-    const fit = p.fitScore != null ? p.fitScore : fitScore(p, need);
+    const fit = selectedNeed
+      ? (p.fitScore != null ? p.fitScore : fitScore(p, selectedNeed))
+      : null;
     return { ...p, ev, fit };
   };
   let rows = players.map(enrich).filter((p) => {
@@ -30,12 +36,17 @@ export function MyPlayers({ t, ar, players, need, loading, updatePlayer, onAdd, 
   });
   const sorters = {
     eval: (a, b) => (b.ev?.score || 0) - (a.ev?.score || 0),
-    fit: (a, b) => b.fit - a.fit,
+    fit: (a, b) => (b.fit ?? -1) - (a.fit ?? -1),
     recent: (a, b) => a.daysAgo - b.daysAgo,
     value: (a, b) => a.valueNum - b.valueNum,
     name: (a, b) => (ar ? a.nameAr : a.name).localeCompare(ar ? b.nameAr : b.name),
   };
-  rows = [...rows].sort(sorters[sort]);
+  rows = [...rows].sort(sorters[sort === "fit" && !selectedNeed ? "eval" : sort]);
+
+  const showFit = Boolean(selectedNeed);
+  const listCols = showFit
+    ? "2fr 1fr .55fr .8fr 1.1fr .55fr .6fr"
+    : "2.1fr 1.1fr .6fr .9fr 1.3fr .7fr";
 
   const revLabel = (d) => d === 0 ? t.todayRev : t.lastRev.replace("{d}", d);
 
@@ -50,6 +61,14 @@ export function MyPlayers({ t, ar, players, need, loading, updatePlayer, onAdd, 
   return (
     <div className="fade">
       <Header title={t.watchlist} sub={t.showingAll.replace("{n}", rows.length).replace("{tot}", players.length)} />
+
+      <NeedSwitcher
+        t={t}
+        ar={ar}
+        needs={needs}
+        selectedNeedId={selectedNeedId}
+        onChange={setSelectedNeedId}
+      />
 
       {/* toolbar */}
       <div className="no-print" style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap", alignItems: "center" }}>
@@ -66,7 +85,7 @@ export function MyPlayers({ t, ar, players, need, loading, updatePlayer, onAdd, 
         </select>
         <select className="sel" value={sort} onChange={(e) => setSort(e.target.value)}>
           <option value="eval">{t.sortBy}: {t.sortEval}</option>
-          <option value="fit">{t.sortBy}: {t.sortFit}</option>
+          {showFit && <option value="fit">{t.sortBy}: {t.sortFit}</option>}
           <option value="recent">{t.sortBy}: {t.sortRecent}</option>
           <option value="value">{t.sortBy}: {t.sortValue}</option>
           <option value="name">{t.sortBy}: {t.sortName}</option>
@@ -83,11 +102,13 @@ export function MyPlayers({ t, ar, players, need, loading, updatePlayer, onAdd, 
       {/* LIST */}
       {mode === "list" && rows.length > 0 && (
         <div className="panel stagger" style={{ overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "2.1fr 1.1fr .6fr .9fr 1.3fr .7fr", padding: "13px 20px", fontSize: 11, letterSpacing: 1, textTransform: "uppercase", color: "var(--muted2)", borderBottom: "1px solid var(--line2)" }}>
-            <div>{ar ? "اللاعب" : "Player"}</div><div>{t.stage}</div><div>{t.pos}</div><div>{t.val}</div><div>{t.eval}</div><div></div>
+          <div style={{ display: "grid", gridTemplateColumns: listCols, padding: "13px 20px", fontSize: 11, letterSpacing: 1, textTransform: "uppercase", color: "var(--muted2)", borderBottom: "1px solid var(--line2)" }}>
+            <div>{ar ? "اللاعب" : "Player"}</div><div>{t.stage}</div><div>{t.pos}</div><div>{t.val}</div><div>{t.eval}</div>
+            {showFit && <div>{t.fit}</div>}
+            <div></div>
           </div>
           {rows.map((p) => (
-            <div key={p.id} className="hover-row" style={{ display: "grid", gridTemplateColumns: "2.1fr 1.1fr .6fr .9fr 1.3fr .7fr", padding: "14px 20px", alignItems: "center", borderBottom: "1px solid var(--line2)", cursor: "pointer" }} onClick={() => onOpen(p.id)}>
+            <div key={p.id} className="hover-row" style={{ display: "grid", gridTemplateColumns: listCols, padding: "14px 20px", alignItems: "center", borderBottom: "1px solid var(--line2)", cursor: "pointer" }} onClick={() => onOpen(p.id)}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <Avatar p={p} size={40} radius={11} font={18} />
                 <div><div style={{ fontWeight: 600, fontSize: 14.5 }}>{ar ? p.nameAr : p.name}</div>
@@ -101,6 +122,11 @@ export function MyPlayers({ t, ar, players, need, loading, updatePlayer, onAdd, 
                 <div style={{ width: 64, height: 6, background: "rgba(255,255,255,.06)", borderRadius: 4, overflow: "hidden" }}>
                   <div style={{ width: `${p.ev ? p.ev.score * 10 : 0}%`, height: "100%", background: "var(--primary)" }} /></div>
               </div>
+              {showFit && (
+                <span className="mono" style={{ fontSize: 13, color: "var(--green-bright)" }}>
+                  {p.fit != null ? `${p.fit}%` : "—"}
+                </span>
+              )}
               <ArrowRight size={17} color="var(--muted)" style={{ justifySelf: "end", transform: ar ? "scaleX(-1)" : "none" }} />
             </div>))}
         </div>
@@ -126,7 +152,11 @@ export function MyPlayers({ t, ar, players, need, loading, updatePlayer, onAdd, 
                     </div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                       <span className="mono serif" style={{ fontSize: 17, fontWeight: 600 }}>{p.ev ? p.ev.score.toFixed(1) : "—"}</span>
-                      <span className="mono" style={{ fontSize: 11, color: "var(--green-bright)" }}>{p.fit}% {t.fit}</span>
+                      {showFit && (
+                        <span className="mono" style={{ fontSize: 11, color: "var(--green-bright)" }}>
+                          {p.fit != null ? `${p.fit}% ${t.fit}` : "—"}
+                        </span>
+                      )}
                     </div>
                     <StageSelect mini stage={p.stage} t={t} onChange={(v) => updatePlayer(p.id, { stage: v })} />
                   </div>

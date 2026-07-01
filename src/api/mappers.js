@@ -198,10 +198,13 @@ export function mapScoutingNeed(need) {
     weight: a.weight,
   }));
   return {
+    id: need.id,
     pos: need.position_key,
     maxAge: need.max_age,
     maxValue: need.max_value_amount,
+    maxValueCurrency: need.max_value_currency || "EUR",
     title: need.title,
+    createdAt: need.created_at || null,
     attrs,
   };
 }
